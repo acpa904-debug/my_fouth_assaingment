@@ -1,11 +1,187 @@
+
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Job Tracker</title>
+    <link href="https://cdn.jsdelivr.net/npm/daisyui@4.12.10/dist/full.min.css" rel="stylesheet" />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet" />
+
+    <style>
+        * { font-family: 'DM Sans', sans-serif; }
+        h1, h2, h3, .syne { font-family: 'Syne', sans-serif; }
+        .job-card { 
+            background: #202122; 
+            border: 1px solid #1e2830; 
+            border-radius: 1rem; 
+            position: relative; 
+            overflow: hidden; 
+            transition: 0.3s;
+        }
+        .job-card:hover { transform: translateY(-3px); border-color: #2a3540; }
+        .strip { width: 4px; height: 100%; position: absolute; left: 0; top: 0; }
+        .strip-interview { background: #34d399; }
+        .strip-rejected { background: #f87171; }
+        
+        /* Delete Button Style Update */
+        .delete-btn {
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            background: rgba(248, 113, 113, 0.1);
+            border: 1px solid rgba(248, 113, 113, 0.2);
+            padding: 6px;
+            border-radius: 8px;
+            transition: all 0.2s;
+            z-index: 10;
+        }
+        .delete-btn:hover {
+            background: #f87171;
+            border-color: #f87171;
+        }
+        .delete-btn img {
+            width: 14px;
+            height: 14px;
+            filter: brightness(1.2);
+        }
+        .delete-btn:hover img {
+            filter: brightness(0) invert(1); 
+        }
+
+        .icon-img { width: 13px; height: 13px; object-fit: contain; opacity: 0.8; }
+    </style>
 </head>
-<body>
-    <h1 style="background-color:red ;">bangladesh is my cuntry</h1>
+
+<body class="min-h-screen p-4 md:p-8 bg-[#0a0f14] text-gray-300">
+<div class="max-w-5xl mx-auto">
+
+    <div class="mb-8 flex justify-between items-center">
+        <h1 class="syne font-extrabold text-blue-400 text-2xl">Job Application Tracker</h1>
+        <span id="badge" class="badge badge-outline border-cyan-400 text-cyan-400 font-bold p-3">8 Jobs</span>
+    </div>
+
+    <div class="grid grid-cols-3 gap-4 mb-8">
+        <div class="bg-[#111820] border border-[#1e2830] p-5 rounded-2xl text-center">
+            <p class="text-[10px] uppercase tracking-widest text-gray-400">Total</p>
+            <p class="text-3xl font-extrabold text-white" id="totalCount">8</p>
+        </div>
+        <div class="bg-[#111820] border border-emerald-500/20 p-5 rounded-2xl text-center">
+            <p class="text-[10px] uppercase tracking-widest text-emerald-500">Interview</p>
+            <p class="text-3xl font-extrabold text-emerald-400" id="interviewCount">0</p>
+        </div>
+        <div class="bg-[#111820] border border-red-500/20 p-5 rounded-2xl text-center">
+            <p class="text-[10px] uppercase tracking-widest text-red-500">Rejected</p>
+            <p class="text-3xl font-extrabold text-red-400" id="rejectedCount">0</p>
+        </div>
+    </div>
+
+    <div class="flex gap-2 mb-6">
+        <button onclick="filterJobs('all')" class="btn btn-sm rounded-full px-5 bg-[#1a2535] text-white border-0">All</button>
+        <button onclick="filterJobs('interview')" class="btn btn-sm btn-outline btn-success rounded-full px-5">Interview</button>
+        <button onclick="filterJobs('rejected')" class="btn btn-sm btn-outline btn-error rounded-full px-5">Rejected</button>
+    </div>
+
+    <div id="jobsContainer" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
+
+    <div id="emptyState" class="hidden flex-col items-center py-20 opacity-30">
+        <img src="./img/jobs.png" class="w-12 mb-2">
+        <p class="syne font-bold">No Applications Yet</p>
+    </div>
+</div>
+
+<script>
+let jobs = [
+    { id:1, company:"Mobile First Corp", position:"React Native Developer", location:"Remote", type:"Full-time", salary:"$130K–$175K", status: null },
+    { id:2, company:"CloudStack Inc", position:"Senior Backend Engineer", location:"New York, NY", type:"Full-time", salary:"$140K–$190K", status: null },
+    { id:3, company:"DesignFlow Studio", position:"UI/UX Designer", location:"San Francisco, CA", type:"Contract", salary:"$80–$110/hr", status: null },
+    { id:4, company:"DataSphere AI", position:"Machine Learning Engineer", location:"Remote", type:"Full-time", salary:"$160K–$220K", status: null },
+    { id:5, company:"Nexus Payments", position:"Frontend Engineer", location:"Austin, TX", type:"Full-time", salary:"$110K–$150K", status: null },
+    { id:6, company:"GreenLeaf Tech", position:"DevOps Engineer", location:"Remote", type:"Part-time", salary:"$70K–$95K", status: null },
+    { id:7, company:"ByteForge Labs", position:"Full Stack Developer", location:"Chicago, IL", type:"Full-time", salary:"$120K–$160K", status: null },
+    { id:8, company:"Stellar Analytics", position:"Data Engineer", location:"Boston, MA", type:"Full-time", salary:"$130K–$170K", status: null }
+];
+
+let viewStatus = 'all';
+
+function render() {
+    const container = document.getElementById('jobsContainer');
+    const filtered = viewStatus === 'all' ? jobs : jobs.filter(j => j.status === viewStatus);
+    
+    document.getElementById('totalCount').innerText = jobs.length;
+    document.getElementById('interviewCount').innerText = jobs.filter(j => j.status === 'interview').length;
+    document.getElementById('rejectedCount').innerText = jobs.filter(j => j.status === 'rejected').length;
+    document.getElementById('badge').innerText = `${filtered.length} Jobs`;
+
+    if(filtered.length === 0) {
+        container.innerHTML = "";
+        document.getElementById('emptyState').style.display = 'flex';
+        return;
+    }
+    document.getElementById('emptyState').style.display = 'none';
+
+    container.innerHTML = filtered.map(job => {
+        const isInt = job.status === 'interview';
+        const isRej = job.status === 'rejected';
+        
+        return `
+        <div class="job-card">
+            <div class="strip ${isInt ? 'strip-interview' : isRej ? 'strip-rejected' : ''}"></div>
+            
+            <button onclick="deleteJob(${job.id})" class="delete-btn" title="Delete Job">
+                <img class="w-10 h-10" src="./img/img_3ec8263ec8263ec8.png" alt="Delete">
+            </button>
+
+            <div class="p-5">
+                <div class="flex justify-between items-start mb-3 pr-10">
+                    <div>
+                        <h3 class="text-white font-bold text-base">${job.company}</h3>
+                        <p class="text-cyan-400 text-xs font-medium mt-0.5">${job.position}</p>
+                    </div>
+                    ${job.status ? `
+                        <span class="badge badge-sm text-[9px] font-bold uppercase ${isInt ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-red-500/10 text-red-400 border-red-500/20'}">
+                            ${job.status}
+                        </span>` : ''}
+                </div>
+
+                <div class="flex flex-wrap gap-x-4 gap-y-2 text-[11px] mb-5 text-gray-400">
+                    <span class="flex items-center gap-1"><img src="./img/loc.png" class="icon-img"> ${job.location}</span>
+                    <span class="flex items-center gap-1"><img src="./img/work.png" class="icon-img"> ${job.type}</span>
+                    <span class="flex items-center gap-1 text-emerald-400 font-semibold"><img src="./img/cash.png" class="icon-img"> ${job.salary}</span>
+                </div>
+
+                <div class="flex gap-2">
+                    <button onclick="updateStatus(${job.id}, 'interview')" class="btn btn-xs flex-1 rounded-md border-0 ${isInt ? 'bg-emerald-500 text-white' : 'bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500 hover:text-white'}">
+                        Interview
+                    </button>
+                    <button onclick="updateStatus(${job.id}, 'rejected')" class="btn btn-xs flex-1 rounded-md border-0 ${isRej ? 'bg-red-500 text-white' : 'bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white'}">
+                        Rejected
+                    </button>
+                </div>
+            </div>
+        </div>
+        `;
+    }).join('');
+}
+
+function updateStatus(id, s) {
+    const job = jobs.find(j => j.id === id);
+    job.status = (job.status === s) ? null : s;
+    render();
+}
+
+function deleteJob(id) {
+    jobs = jobs.filter(j => j.id !== id);
+    render();
+}
+
+function filterJobs(s) {
+    viewStatus = s;
+    render();
+}
+
+render();
+</script>
 </body>
 </html>
